@@ -1,0 +1,30 @@
+{
+  "name": "njs-jsonrpc-2.0",
+  "description": "JSON-RPC 2.0 Client and Server",
+  "main": "index.js",
+  "homepage": "https://github.com/garry-sk/jsonrpc-2.0",
+  "author": {
+    "name": "garry",
+    "email": "garrysk@yandex.ru"
+  },
+  "license" : "BSD-3-Clause",
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "njscu": "*"
+  },
+  "devDependencies": {
+    "chai": "*",
+    "chai-as-promised": "*",
+    "express": "^4.17.2",
+    "mocha": "*"
+  },
+  "keywords": [
+    "jsonrpc-2.0", "json-rpc 2.0", "jsonrpc 2.0",
+    "json-rpc", "jsonrpc", "rpc", "express", "api",
+    "connect", "middleware"
+  ],
+  "engines" : { "node" : ">=8.0.0" },
+  "version": "0.1.2"
+}
