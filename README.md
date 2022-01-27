@@ -28,9 +28,7 @@ const app = express();
 
 app.use(express.json());
 
-const rpcServer = require('njs-jsonrpc-2.0').server();
-
-rpcServer.setEndpoints('/api/?', app)
+const rpcServer = require('njs-jsonrpc-2.0').server('/api/?', app);
 
 rpcServer.add(sum, mul);
 rpcServer.add(
@@ -59,13 +57,16 @@ const jsonrpc = require('njs-jsonrpc-2.0');
 jsonrpc.client('http://localhost/api')
 .then(async (rpcClient) => {
 	let r;
+
+	// API method call via client property
 	try {
 		r = await rpcClient.sum(2, 3, 4);
-		console.log(r); // 7
+		console.log(r); // 9
 	} catch(err) {
 		console.error(err);
 	}
 
+	// calling an API method via the client's 'call' method
 	try {
 		r = await rpcClient.call('mul', 25, 4);
 		console.log(r); // 100
@@ -73,13 +74,18 @@ jsonrpc.client('http://localhost/api')
 		console.error(err);
 	}
 
+	// notification (the result is not important and is not sent by the server)
 	try {
 		r = await rpcClient.notify('div', 12, 3);
-		console.log(r); // 4
+		console.log(r); // undefined
 	} catch(err) {
+		// server may return an error if the request is invalid
+		// and is not recognized by it as 'notification'.
+		// client will throw appropriate exception
 		console.error(err);
 	}
 
+	// batch
 	try {
 		r = await rpcClient.batch()
 		.call('sum', 5, 7, 11)
@@ -87,14 +93,6 @@ jsonrpc.client('http://localhost/api')
 		.call('inv', 5)
 		.do();
 		console.log(r); // [23, 0.2]
-	} catch(err) {
-		console.error(err);
-	}
-
-	// directly at the client
-	try {
-		r = await rpcClient.sum(12, 3);
-		console.log(r); // 15
 	} catch(err) {
 		console.error(err);
 	}

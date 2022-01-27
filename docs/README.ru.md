@@ -57,13 +57,16 @@ const jsonrpc = require('njs-jsonrpc-2.0');
 jsonrpc.client('http://localhost/api')
 .then(async (rpcClient) => {
 	let r;
+
+	// вызов метода API через св-во клиента
 	try {
 		r = await rpcClient.sum(2, 3, 4);
-		console.log(r); // 7
+		console.log(r); // 9
 	} catch(err) {
 		console.error(err);
 	}
 
+	// вызов метода API через метод 'call' клиента
 	try {
 		r = await rpcClient.call('mul', 25, 4);
 		console.log(r); // 100
@@ -71,13 +74,18 @@ jsonrpc.client('http://localhost/api')
 		console.error(err);
 	}
 
+	// notification (результат не важен и сервером не отправляется)
 	try {
 		r = await rpcClient.notify('div', 12, 3);
-		console.log(r); // 4
+		console.log(r); // undefined
 	} catch(err) {
+		// сервер может вернуть ошибку, если запрос некорректный
+		// и не распознан им как 'notification'.
+		// клиент выбросит соответствующее исключение
 		console.error(err);
 	}
 
+	// batch
 	try {
 		r = await rpcClient.batch()
 		.call('sum', 5, 7, 11)
@@ -85,14 +93,6 @@ jsonrpc.client('http://localhost/api')
 		.call('inv', 5)
 		.do();
 		console.log(r); // [23, 0.2]
-	} catch(err) {
-		console.error(err);
-	}
-
-	// непосредственно у клиента
-	try {
-		r = await rpcClient.sum(12, 3);
-		console.log(r); // 15
 	} catch(err) {
 		console.error(err);
 	}
