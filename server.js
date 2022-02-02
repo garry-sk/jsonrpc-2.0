@@ -27,6 +27,17 @@ async function _parseReqBody(req) {
 	});
 }
 
+function ErrorToObj(err) {
+	const obj = { name: err.name, message: err.message };
+	[ 'code', 'errno', 'syscall', 'path', 'address', 'port' ].forEach(p => {
+		if (err[p])
+			obj[p] = err[p];
+	});
+	for (let p in err)
+		obj[p] = err[p];
+	return obj;
+}
+
 class JsonRpcResult {
 	constructor (result, id) {
 		this.result = result;
@@ -95,13 +106,17 @@ module.exports = exports = function (url, app) {
 				try {
 					const c = methods[methodName].call(req, ...params);
 					if (c instanceof Promise) {
-						c.then(r => resolve([id, r]));
+						c.then(r => resolve([id, r]))
+						.catch(err => {
+							const data =  err instanceof Error ? ErrorToObj(err) : err;
+							reject(new JsonRpcServerError('E_JSONRPC20_АPPLICATION_ERROR', errMsg, id, data));
+						});
 					} else {
 						resolve([id, c]);
 					}
 				} catch(err) {
-					const errMsg = err.message || err;
-					reject(new  JsonRpcServerError('E_JSONRPC20_INTERNAL_ERROR', errMsg, id));
+					const data =  err instanceof Error ? ErrorToObj(err) : err;
+					reject(new JsonRpcServerError('E_JSONRPC20_АPPLICATION_ERROR', errMsg, id, data));
 				}
 			})
 			.then(([id, res]) => {

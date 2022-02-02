@@ -1,5 +1,7 @@
 .vs
 .vscode
+.nyc_output
+coverage/
 node_modules/
 out/
 debug/

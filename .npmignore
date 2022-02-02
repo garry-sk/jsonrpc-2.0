@@ -1,8 +1,10 @@
 .vs
 .vscode
 .npmrc
+.nyc_output
+coverage/
+debug/
 node_modules/
 out/
 package-lock.json
 test/
-debug/

@@ -336,6 +336,7 @@ _Если API сервиса реализует методы `call`, `notify` и
  * `JsonRpcError` базовый класс ошибок `JSON-RPC 2.0` протокола
    - 'E_JSONRPC20', -32100, 'Json RPC 2.0 protocol error' - обобщённая ошибка протокола 
  * `JsonRpcServerError` ошибки сервера, в соответствии со спецификацией
+  - 'E_JSONRPC20_АPPLICATION_ERROR', -32099, 'Аpplication error' - Ошибки, возникающие в приложении. Дополнительная информация об ошибке передаётся в поле 'data'.
    - 'E_JSONRPC20_INVALID_REQUEST', -32600, 'Invalid Request' - The JSON sent is not a valid Request object.
    - 'E_JSONRPC20_METHOD_NOT_FOUND', -32601, 'Method not found' - The method does not exist / is not available.
    - 'E_JSONRPC20_INVALID_PARAMS', -32602, 'Invalid params' - Invalid method parameter(s).

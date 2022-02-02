@@ -9,36 +9,7 @@ const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
 
-function doRequest(body, requestParams) {
-	let proto;
-	switch (requestParams.protocol) {
-		case 'http:': proto = http; break;
-		case 'https:': proto = https; break;
-		default: throw new TypeError(`Protocol "${protocol}" not supported. Expected "http" or "https:"`); // 'ERR_INVALID_PROTOCOL'
-	}
-	return new Promise((resolve, reject) => {
-		const req = proto.request(requestParams, res => {
-			const buf = [];
-			if (400 <= res.statusCode) {
-				res.destroy();
-				reject(`${res.statusCode} - ${res.statusMessage}`);
-				return;
-			}
-			res.on('data', chunk => buf.push(chunk))
-			.on('end', () => {
-				resolve(buf.join(''));
-			})
-			.on('error', err => reject(err));
-		})
-		if (requestParams.method == 'POST') {
-			req.write(body, 'utf-8');
-		}
-		req.end();
-		req.on('error', err => reject(err));
-	});
-}
-
-function createDefaultTPClient(url, opts = {}) {
+function createDefaultTPClient(url, opts) {
 	if (typeof url == 'string' || url instanceof URL) {
 		url = new URL(url);
 
@@ -55,7 +26,7 @@ function createDefaultTPClient(url, opts = {}) {
 	switch (opts.protocol) {
 		case 'http:': client = http; break;
 		case 'https:': client = https; break;
-		default: throw new TypeError(`Protocol "${protocol}" not supported. Expected "http" or "https:"`); // 'ERR_INVALID_PROTOCOL'
+		default: throw new Error(`Protocol "${opts.protocol}" not supported. Expected "http" or "https:"`); // 'ERR_INVALID_PROTOCOL'
 	}
 
 	return {
@@ -88,7 +59,7 @@ function createDefaultTPClient(url, opts = {}) {
 }
 
 module.exports = exports = {
-	bareClient: (url, opts) => {
+	bareClient: (url, opts = {}) => {
 		let tpClient; // transport protocol client
 		if (url && typeof url.request == "function") {
 			tpClient = url;
@@ -128,10 +99,10 @@ module.exports = exports = {
 				}
 
 				if (res.error) {
-					throw new JsonRpcServerError(res.error.code, res.error.message);
+					throw new JsonRpcServerError(res.error.code, res.error.message, res.id, res.error.data);
 				} else if (res.result !== undefined) {
 					if (id != res.id) {
-						throw new JsonRpcClientError('E_JSONRPC20_MISMATCHED_IDS');
+						throw new JsonRpcClientError('E_JSONRPC20_MISMATCHED_IDS', `request id ${id}; response id ${res.id}`);
 					}
 					return res.result;
 				}
@@ -153,7 +124,7 @@ module.exports = exports = {
 				}
 
 				if (res.error) {
-					throw new JsonRpcServerError(res.error.code, res.error.message);
+					throw new JsonRpcServerError(res.error.code, res.error.message, res.id, res.error.data);
 				}
 
 				throw new JsonRpcClientError('E_JSONRPC20_INVALID_RESPONSE');
@@ -195,13 +166,13 @@ module.exports = exports = {
 									continue;
 								}
 								if (r.error) {
-									result.push(new JsonRpcServerError(r.error.code, r.error.message, r.id))
+									result.push(new JsonRpcServerError(r.error.code, r.error.message, r.id, r.error.data))
 									continue;
 								}
 								result.push(r.result);
 							}
 						} else if (res.error) {
-							throw new JsonRpcServerError(res.error.code, res.error.message);
+							throw new JsonRpcServerError(res.error.code, res.error.message, res.id, res.error.data);
 						} else {
 							throw new JsonRpcClientError('E_JSONRPC20_INVALID_RESPONSE');
 						}

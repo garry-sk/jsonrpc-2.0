@@ -331,8 +331,9 @@ Errors contain the following information:
 ```
 
  * `JsonRpcError` base class of `JSON-RPC 2.0` protocol errors
-   - 'E_JSONRPC20', -32100, 'Json RPC 2.0 protocol error' - generic protocol error
+   - 'E_JSONRPC20', -32000, 'Json RPC 2.0 protocol error' - generic protocol error
  * `JsonRpcServerError` server errors, as per spec
+   - 'E_JSONRPC20_АPPLICATION_ERROR', -32099, 'Application error' - Errors that occur in the application. Additional information about the error is passed in the 'data' field.
    - 'E_JSONRPC20_INVALID_REQUEST', -32600, 'Invalid Request' - The JSON sent is not a valid Request object.
    - 'E_JSONRPC20_METHOD_NOT_FOUND', -32601, 'Method not found' - The method does not exist / is not available.
    - 'E_JSONRPC20_INVALID_PARAMS', -32602, 'Invalid params' - Invalid method parameter(s).
