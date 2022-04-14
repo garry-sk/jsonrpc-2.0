@@ -185,7 +185,8 @@ const server = require('njs-jsonrpc-2.0').server('/api/?', app);
 
  a pair \<name\>, \<function\> can be passed as one parameter as an array of two elements with indices 0 - name, 1 - function (elements with indices \>1 will be ignored)
 
-Adds a service API method
+Adds a service API method.<br>
+API methods added to the service will be called on the request object, i.e. for these methods, `this` is instance of `http.IncomingMessage`.
 
 #### server.setEndpoints(path, app)
 
@@ -212,15 +213,49 @@ Returns: \<Object\> object with information about API methods (names of methods 
 
 ### Client
 
-#### const client = jsonrpc.bareClient(address, headers, opts)
+#### const client = jsonrpc.bareClient(address, options)
 
- * `address` \<string\> - url where the API is available
- * `headers` \<Object\> - http(s) headers that will be set for requests.
-      By default, only `Accept: application/json` and `Content-Type: application/json` are set
- * `opts` \<Object\> - http(s) request options (see http.request documentation).
-      While `rejectUnauthorized` is taken into account.
+ * `address` \<string|URL|Object\> - url where the API is available or object with `request` method
+ * `options` \<Object\> - http(s) request options (see http.request documentation).
 
-The cocreate method instantiates the "base" client without building the service API methods and with three base methods.
+Returns: \<Object\>
+
+The method instantiates a "base" client with three base methods, no service API methods.
+
+If the `address` parameter is a string (or URL), then a simple default client based on the nodejs http/https modules is used to connect to the server. This simple client sets the `Accept: application/json` and `Content-Type: application/json` headers by default.
+
+A custom client can be used to connect to the server (eg based on `'request'` or `'got'`).
+
+If `address` parameter is object it must implement `request(data, options)` method which returns Promise<string|null|undefined>. If returned value is not empty string it must be JSON. Parameter `data` if not <null|undefined> must be JSON-serializable object. It is data for send to the server. Parametert `options` is options for request. At this time it is an object with property `method` ({ method: <"GET"|"POST">}).
+
+Example:
+
+```js
+const request = require("request-promise");
+
+// transport protocol client
+class TPClient {
+	constructor(options) {
+		this.client = request.defaults(options);
+	}
+	async request(data, options = {}) {
+		if (data)
+			options.body = JSON.stringify(data);
+		const res = await this.client(options);
+		return res;
+	}
+}
+
+const rpcClient = await jsonrpc.client(new TPClient({
+		uri: <apiUrl>,
+		headers: {
+			'Accept': 'application/json',
+			'Content-Type': 'application/json'
+		},
+		agentOptions: { rejectUnauthorized: false }
+	}));
+```
+
 
 #### methods
 

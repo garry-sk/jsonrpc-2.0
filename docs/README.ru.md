@@ -185,7 +185,8 @@ const server = require('njs-jsonrpc-2.0').server('/api/?', app);
 
  пара \<имя>, \<функция> может быть передана как один параметр в виде массива из двух элементов с идексами 0 - имя, 1 - функция (элементы с индексами >1 будут проигнорированы)
 
-Добавляет метод API сервиса
+Добавляет метод API сервиса<br>
+Методы API, добавленные в сервис, будут вызываться на объекте запроса, т.е. для этих методов `this` является экземпляром `http.IncomingMessage`.
 
 
 #### server.setEndpoints(path, app)
@@ -212,16 +213,49 @@ Returns: \<Object\> объект с информацией о методах API
 
 ### Клиент
 
-#### const client = jsonrpc.bareClient(address, headers, opts)
+#### const client = jsonrpc.bareClient(address, options)
 
  * `address` \<string\> - url, по которому доступен API
- * `headers` \<Object\> - http(s) заголовки, которые будут устанавливаться для запросов.
-     По умолчанию выставлены только `Accept: application/json` и `Content-Type: application/json`
- * `opts` \<Object\> - опции http(s) запроса (см. документацию по http.request).
-     Пока учитывается `rejectUnauthorized`.
+ * `options` \<Object\> - опции http(s) запроса (см. документацию по http.request).
+
 Returns: \<Object\>
 
-Метод содсоздаёт экземпляр "базового" клиента без построения методов API сервиса и с тремя базовыми методами.
+Метод создаёт экземпляр «базового» клиента с тремя базовыми методами, без методов API сервиса.
+
+Если параметр `address` является строкой (или URL), то для подключения к серверу используется простой клиент по умолчанию, основанный на модулях nodejs http/https. Этот простой клиент устанавливает заголовки Accept: application/json и Content-Type: application/json по умолчанию.
+
+Пользовательский клиент может использоваться для подключения к серверу (например, на основе `'request'` или `'got'`).
+
+Если параметр `address` является объектом, он должен реализовать метод `request(data, options)`, который возвращает Promise<string|null|undefined>. Если возвращаемое значение не является пустой строкой, оно должно быть в формате JSON. Параметр `data`, если он не <null|undefined>, должен быть JSON-сериализуемым объектом. Это данные для отправки на сервер. Параметр `options` - это опции для запроса. На данный момент это объект со свойством `метод` ({метод: <"GET"|"POST">}).
+
+Пример:
+
+```js
+const request = require("request-promise");
+
+// transport protocol client
+class TPClient {
+	constructor(options) {
+		this.client = request.defaults(options);
+	}
+	async request(data, options = {}) {
+		if (data)
+			options.body = JSON.stringify(data);
+		const res = await this.client(options);
+		return res;
+	}
+}
+
+const rpcClient = await jsonrpc.client(new TPClient({
+		uri: <apiUrl>,
+		headers: {
+			'Accept': 'application/json',
+			'Content-Type': 'application/json'
+		},
+		agentOptions: { rejectUnauthorized: false }
+	}));
+```
+
 
 #### методы
 

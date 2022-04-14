@@ -52,7 +52,11 @@ describe('njs-jsonrpc-2.0', function() {
 		it('empty', () => { expect(() => { rpcServer.add() }).to.not.throw(); });
 		it('named', () => {
 			expect(() => {
-				rpcServer.add(function ping() { return 'pong'; });
+				rpcServer.add(function ping() {
+					if (!(this instanceof http.IncomingMessage))
+						return 'po...';
+					return 'pong';
+				});
 			}).to.not.throw();
 		});
 		it('named arrow', () => {
@@ -87,7 +91,7 @@ describe('njs-jsonrpc-2.0', function() {
 			});
 		});
 		it('create client', async () => {
-			rpcClient = await jsonrpc.client(apiUrl, {}, { rejectUnauthorized: false });
+			rpcClient = await jsonrpc.client(apiUrl, { rejectUnauthorized: false });
 			expect(rpcClient).to.haveOwnProperty('ping');
 			expect(rpcClient).to.haveOwnProperty('mirror');
 			expect(rpcClient).to.haveOwnProperty('sum');

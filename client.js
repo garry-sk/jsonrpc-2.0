@@ -38,21 +38,75 @@ function doRequest(body, requestParams) {
 	});
 }
 
-module.exports = exports = {
-	bareClient: (address, headers, opts = {}) => {
-		headers = Object.assign({
-			'Accept': 'application/json',
-			'Content-Type': 'application/json'
-		}, headers);
+function createDefaultTPClient(url, opts = {}) {
+	if (typeof url == 'string' || url instanceof URL) {
+		url = new URL(url);
 
-		const url = new URL(address);
-		const requestParams = {
-			method: 'POST', protocol: url.protocol,
+		Object.assign(opts, {
+			protocol: url.protocol,
 			host: url.hostname, port: url.port,
-			path: url.pathname + url.search,
-			headers: headers,
-			rejectUnauthorized: !(opts.rejectUnauthorized === false)
+			path: url.pathname + url.search
+		});
+	} else {
+		opts = url;
+	}
+
+	let client;
+	switch (opts.protocol) {
+		case 'http:': client = http; break;
+		case 'https:': client = https; break;
+		default: throw new TypeError(`Protocol "${protocol}" not supported. Expected "http" or "https:"`); // 'ERR_INVALID_PROTOCOL'
+	}
+
+	return {
+		request: async (body, requestParams) => {
+			requestParams = Object.assign({}, opts, requestParams);
+			if (!requestParams.method)
+				requestParams.method = !body ? 'GET' : 'POST';
+			return new Promise((resolve, reject) => {
+				const req = client.request(requestParams, res => {
+					const buf = [];
+					if (400 <= res.statusCode) {
+						res.destroy();
+						reject(`${res.statusCode} - ${res.statusMessage}`);
+						return;
+					}
+					res.on('data', chunk => buf.push(chunk))
+					.on('end', () => {
+						resolve(buf.join(''));
+					})
+					.on('error', err => reject(err));
+				})
+				if (body && !["GET", "HEAD", "CONNECT", "OPTIONS", "TRACE"].includes(requestParams.method)) {
+					req.write(JSON.stringify(body), 'utf-8');
+				}
+				req.end();
+				req.on('error', err => reject(err));
+			});
 		}
+	}
+}
+
+module.exports = exports = {
+	bareClient: (url, opts) => {
+		let tpClient; // transport protocol client
+		if (url && typeof url.request == "function") {
+			tpClient = url;
+		} else {
+			opts.headers = Object.assign({
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			}, opts.headers);
+
+			opts.rejectUnauthorized = !(opts.rejectUnauthorized === false)
+
+			tpClient = createDefaultTPClient(url, opts);
+		}
+
+		if (tpClient == null) {
+			throw new TypeError(`Parameter 'url' is invalid`);
+		}
+
 		const idPrefix = crypto.randomFillSync(Buffer.alloc(10)).toString('hex');
 		let idCounter = 1;
 
@@ -62,11 +116,13 @@ module.exports = exports = {
 			call: async (method, ...params) => {
 				const id = createId();
 				const reqObj = { "jsonrpc": "2.0", method, params, id };
-				const body = await doRequest(JSON.stringify(reqObj), requestParams);
+				const body = await tpClient.request(reqObj, { method: "POST" });
+				if (!body)
+					throw new JsonRpcClientError('E_JSONRPC20_INVALID_RESPONSE');
 
 				let res;
 				try {
-					res = JSON.parse(body);
+					res = typeof body == 'string' || Buffer.isBuffer(body) ? JSON.parse(body) : body;
 				} catch (err) {
 					throw new JsonRpcClientError('E_JSONRPC20_RESPONSE_PARSE_ERROR', err.message);
 				}
@@ -85,13 +141,13 @@ module.exports = exports = {
 
 			notify: async (method, ...params) => {
 				const reqObj = { "jsonrpc": "2.0", method, params };
-				const body = await doRequest(JSON.stringify(reqObj), requestParams);
+				const body = await tpClient.request(reqObj, { method: "POST" });
 				if (!body)
 					return;
-				
+
 				let res;
 				try {
-					res = JSON.parse(body);
+					res = typeof body == 'string' || Buffer.isBuffer(body) ? JSON.parse(body) : body;
 				} catch (err) {
 					throw new JsonRpcClientError('E_JSONRPC20_RESPONSE_PARSE_ERROR', err.message);
 				}
@@ -120,18 +176,18 @@ module.exports = exports = {
 					},
 
 					do: async () => {
-						const body = await doRequest(JSON.stringify(batchArray), requestParams);
+						const body = await tpClient.request(batchArray, { method: "POST" });
 						if (!body)
 							return;
 
 						const result = [];
 						let res;
 						try {
-							res = JSON.parse(body);
+							res = typeof body == 'string' || Buffer.isBuffer(body) ? JSON.parse(body) : body;
 						} catch (err) {
 							throw new JsonRpcClientError('E_JSONRPC20_RESPONSE_PARSE_ERROR', err.message);
 						}
-	
+
 						if (Array.isArray(res)) {
 							for (const r of res) {
 								if (r.jsonrpc !== '2.0' || (!r.error && !r.result)) {
@@ -159,26 +215,32 @@ module.exports = exports = {
 		};
 	},
 
-	client: async (address, headers, opts) => {
-		const client = exports.bareClient(address, headers, opts);
+	client: async (url, opts = {}) => {
+		let tpClient; // transport protocol client
+
+		if (url && typeof url.request == "function") {
+			tpClient = url;
+		} else {
+			opts.headers = Object.assign({
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			}, opts.headers);
+
+			opts.rejectUnauthorized = !(opts.rejectUnauthorized === false)
+
+			tpClient = createDefaultTPClient(url, opts);
+		}
+
+		const client = exports.bareClient(tpClient);
 		try {
 
-			headers = Object.assign({
+			const headers = Object.assign({
 				'Accept': 'application/json'
-			}, headers);
+			}, opts.headers);
 	
-			const url = new URL(address);
-			const requestParams = {
-				method: 'GET', protocol: url.protocol,
-				host: url.hostname, port: url.port,
-				path: url.pathname + url.search,
-				headers: headers,
-				rejectUnauthorized: opts.rejectUnauthorized !== false
-			}
+			const body = await tpClient.request(null, { method: "GET", headers });
 
-			const body = await doRequest(null, requestParams);
-
-			const ads = JSON.parse(body);
+			const ads = typeof body == 'string' || Buffer.isBuffer(body) ? JSON.parse(body) : body;
 			for (const item of ads) {
 				if (['call', 'notify', 'batch'].includes(item.name))
 					continue;

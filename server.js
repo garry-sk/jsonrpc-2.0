@@ -93,7 +93,7 @@ module.exports = exports = function (url, app) {
 				const params = item.params || [];
 
 				try {
-					const c = methods[methodName](...params);
+					const c = methods[methodName].call(req, ...params);
 					if (c instanceof Promise) {
 						c.then(r => resolve([id, r]));
 					} else {
