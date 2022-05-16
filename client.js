@@ -87,7 +87,7 @@ module.exports = exports = {
 			call: async (method, ...params) => {
 				const id = createId();
 				const reqObj = { "jsonrpc": "2.0", method, params, id };
-				const body = await tpClient.request(reqObj, { method: "POST" });
+				const body = await tpClient.request(reqObj, { method: "POST", headers: opts.headers });
 				if (!body)
 					throw new JsonRpcClientError('E_JSONRPC20_INVALID_RESPONSE');
 
@@ -112,7 +112,7 @@ module.exports = exports = {
 
 			notify: async (method, ...params) => {
 				const reqObj = { "jsonrpc": "2.0", method, params };
-				const body = await tpClient.request(reqObj, { method: "POST" });
+				const body = await tpClient.request(reqObj, { method: "POST", headers: opts.headers });
 				if (!body)
 					return;
 
@@ -147,7 +147,7 @@ module.exports = exports = {
 					},
 
 					do: async () => {
-						const body = await tpClient.request(batchArray, { method: "POST" });
+						const body = await tpClient.request(batchArray, { method: "POST", headers: opts.headers });
 						if (!body)
 							return;
 
